@@ -17,7 +17,8 @@ libraryDependencies ++= {
     "com.typesafe.akka" %% "akka-http-spray-json-experimental"    % akkaStreamV,
     "com.typesafe.akka" %% "akka-http-testkit-experimental"       % akkaStreamV,
     "org.scalatest"     %% "scalatest"                            % scalaTestV % "test",
-    "io.scalac"         %% "reactive-rabbit"                      % "1.0.3"
+    "io.scalac"         %% "reactive-rabbit"                      % "1.0.3",
+    "org.mongodb.scala" %% "mongo-scala-driver"                   % "1.1.0"
   )
 }
 
