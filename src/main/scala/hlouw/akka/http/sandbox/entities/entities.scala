@@ -32,8 +32,13 @@ object IpPairSummary {
   private val EarthRadius = 6371.0
 }
 
+case class RabbitEvent(name: String, message: String)
+
+case class RabbitResponse(outcome: String)
+
 trait Protocols extends DefaultJsonProtocol {
   implicit val ipInfoFormat = jsonFormat5(IpInfo.apply)
   implicit val ipPairSummaryRequestFormat = jsonFormat2(IpPairSummaryRequest.apply)
   implicit val ipPairSummaryFormat = jsonFormat3(IpPairSummary.apply)
+  implicit val rabbitResponseFormat = jsonFormat1(RabbitResponse.apply)
 }

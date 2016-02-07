@@ -7,7 +7,8 @@ import akka.http.scaladsl.model.{HttpResponse, HttpRequest}
 import akka.http.scaladsl.model.StatusCodes._
 import akka.http.scaladsl.testkit.ScalatestRouteTest
 import akka.stream.scaladsl.Flow
-import hlouw.akka.http.sandbox.entities.{IpInfo, IpPairSummary, IpPairSummaryRequest}
+import hlouw.akka.http.sandbox.entities.IpPairSummary
+import hlouw.akka.http.sandbox.entities.{IpPairSummary, IpPairSummaryRequest, IpInfo}
 import org.scalatest._
 
 class ServiceSpec extends FlatSpec with Matchers with ScalatestRouteTest with Service {
