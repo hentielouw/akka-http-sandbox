@@ -1,4 +1,4 @@
-package hlouw.akka.http.sandbox.mongo
+package hlouw.akka.http.sandbox.services
 
 import java.util.concurrent.atomic.AtomicBoolean
 

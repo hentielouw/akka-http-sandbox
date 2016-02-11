@@ -1,48 +1,34 @@
 package hlouw.akka.http.sandbox.resources
 
 import akka.actor.ActorSystem
-import akka.http.scaladsl.marshalling.ToResponseMarshallable
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.Materializer
-import akka.stream.scaladsl.{Flow, Sink, Source}
-import hlouw.akka.http.sandbox.entities.{Protocols, RabbitEvent}
-import io.scalac.amqp.{Connection, Message}
+import akka.stream.scaladsl.Sink
+import hlouw.akka.http.sandbox.entities.RabbitEvent
+import hlouw.akka.http.sandbox.services.RabbitService
 
-import scala.concurrent.{ExecutionContextExecutor, Future}
+import scala.concurrent.{Future, ExecutionContextExecutor}
 
-/**
-  * Created by hlouw on 07/02/2016.
-  */
-trait RabbitResource extends Protocols {
 
-  implicit val system: ActorSystem
-  implicit def executor: ExecutionContextExecutor
-  implicit val materializer: Materializer
+class RabbitResource(service: RabbitService)
+                    (implicit system: ActorSystem, executor: ExecutionContextExecutor, materializer: Materializer) {
 
-  def amqpConnection: Connection
+  import hlouw.akka.http.sandbox.entities.RabbitProtocol._
 
-  val rabbitRoutes = {
+  val routes = pathPrefix("rabbit") {
     pathPrefix("events") {
       (post & pathEnd) {
-        complete(postEvent(RabbitEvent("rabbit1", "All rabbits welcome")))
+        onSuccess(service.postToQueue(RabbitEvent("rabbit1", "All rabbits welcome"))) {
+          complete(StatusCodes.NoContent)
+        }
+      } ~
+      (get & pathEnd) {
+        complete {
+          val result: Future[Seq[RabbitEvent]] = service.streamFromDB.runWith(Sink.seq)
+          result
+        }
       }
-    }
-  }
-
-  def postEvent(event: RabbitEvent): Future[ToResponseMarshallable] = {
-    val rabbitMq = Sink.fromSubscriber(amqpConnection.publishDirectly(queue = "customers"))
-
-    val source = Source.single(event)
-
-    val convertToMessage = Flow[RabbitEvent] map { event =>
-      Message(body = event.toString.getBytes)
-    }
-
-    val stream = source.via(convertToMessage).alsoTo(rabbitMq).runWith(Sink.head)
-
-    stream.map[ToResponseMarshallable] {
-      case _ => StatusCodes.OK -> "success"
     }
   }
 
