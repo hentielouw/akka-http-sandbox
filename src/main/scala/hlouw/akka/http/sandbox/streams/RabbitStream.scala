@@ -1,39 +1,46 @@
 package hlouw.akka.http.sandbox.streams
 
 import akka.actor.ActorSystem
+import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Source}
-import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import hlouw.akka.http.sandbox.entities.RabbitEvent
-import io.scalac.amqp.{Connection, Delivery}
+import io.scalac.amqp.Connection
 import org.mongodb.scala._
-import spray.json._
+
+import scala.concurrent.{ExecutionContextExecutor, Future}
 
 /**
   * Created by hlouw on 11/02/2016.
   */
 class RabbitStream(amqpConnection: Connection, database: MongoDatabase)
-                  (implicit system: ActorSystem, mat: ActorMaterializer) {
+                  (implicit system: ActorSystem, mat: ActorMaterializer, executor: ExecutionContextExecutor) {
 
   import hlouw.akka.http.sandbox.entities.RabbitProtocol._
+  import hlouw.akka.http.sandbox.conversion.ConversionFlows._
 
-  val eventsQueueSource = Source.fromPublisher(amqpConnection.consume("events"))
-  val eventsCollection = database.getCollection("events")
+  private val boundQueue = for {
+    queue <- amqpConnection.queueDeclare()
+    bind <- amqpConnection.queueBind(queue = queue.name, exchange = "sandbox", routingKey = "rabbit.#")
+  } yield queue
 
-  private val unmarshalEvent = Flow[String]
-    .map[RabbitEvent](_.parseJson.convertTo[RabbitEvent])
-    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+  private val eventsCollection = database.getCollection("events")
 
-  val streamToDB: Source[Completed, Unit] = {
-    val deliveryToString = Flow[Delivery].map[String] {
-      _.message.body.map(_.toChar).mkString
+  val streamToDB: Future[Source[String, Unit]] = {
+    val persistInDB = Flow[Document].mapAsync[String](4) { doc =>
+      eventsCollection.insertOne(doc).head() map { _ =>
+        "Success"
+      } recover {
+        case _ => "Failure"
+      }
     }
 
-    val persistEventInDB = Flow[RabbitEvent].mapAsync[Completed](4) { event =>
-      val doc = Document("name" -> event.name, "message" -> event.message)
-      eventsCollection.insertOne(doc).head()
+    for {
+      queue <- boundQueue
+      publisher = amqpConnection.consume(queue.name)
+      source = Source.fromPublisher(publisher)
+    } yield {
+      source.via(deliveryTo[RabbitEvent]).via(toMongoDoc[RabbitEvent]).via(persistInDB)
     }
-
-    eventsQueueSource.via(deliveryToString).via(unmarshalEvent).via(persistEventInDB)
   }
 
 }

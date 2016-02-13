@@ -1,9 +1,8 @@
 package hlouw.akka.http.sandbox.services
 
 import akka.actor.ActorSystem
+import akka.stream.{Supervision, ActorAttributes, ActorMaterializer}
 import akka.stream.scaladsl.{Flow, Sink, Source}
-import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
-import com.mongodb.CursorType
 import hlouw.akka.http.sandbox.entities.RabbitEvent
 import io.scalac.amqp.{Connection, Message}
 import org.mongodb.scala.{Document, MongoDatabase}
@@ -18,24 +17,29 @@ class RabbitService(amqpConnection: Connection, database: MongoDatabase)
   import MongoImplicits._
   import hlouw.akka.http.sandbox.entities.RabbitProtocol._
 
-  private val unmarshalToEvent = Flow[String]
-    .map[RabbitEvent](_.parseJson.convertTo[RabbitEvent])
-    .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
+  private val documentToJson = Flow[Document].map[JsValue](_.toJson().parseJson)
+  private val unmarshalToEvent = Flow[JsValue].map[RabbitEvent](_.convertTo[RabbitEvent])
+  private val eventsCollection = database.getCollection("events")
 
   val streamFromDB: Source[RabbitEvent, Unit] = {
-    val eventsCollection = database.getCollection("events")
-    val eventsDbSource: Source[Document, Unit] = Source.fromPublisher(eventsCollection.find().first())
-    val documentToJson: Flow[Document, String, Unit] = Flow[Document].map[String](_.toJson())
+    val dbEventSource: Source[Document, Unit] = Source
+      .fromPublisher(eventsCollection.find().collect())
+      .mapConcat(_.toList)
 
-    eventsDbSource.via(documentToJson).via(unmarshalToEvent)
+    dbEventSource
+      .via(documentToJson)
+      .via(unmarshalToEvent)
+      .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
   }
+
+  def eventsFromDB: Future[Seq[RabbitEvent]] = streamFromDB.runWith(Sink.seq)
 
   def postToQueue(event: RabbitEvent)(implicit ec: ExecutionContext): Future[Unit] = {
     val source = Source.single(event)
-    val eventsQueueSink = Sink.fromSubscriber(amqpConnection.publishDirectly(queue = "events"))
+    val eventsQueueSink = Sink.fromSubscriber(amqpConnection.publish(exchange = "sandbox", routingKey = "rabbit.events"))
 
     val convertToMessage = Flow[RabbitEvent].map[Message] { event =>
-      Message(body = event.toString.getBytes)
+      Message(body = event.toJson.toString.getBytes)
     }
 
     val post = source

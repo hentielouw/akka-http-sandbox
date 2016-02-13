@@ -4,9 +4,14 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
 import akka.stream.ActorMaterializer
 import com.typesafe.config.ConfigFactory
-import hlouw.akka.http.sandbox.core.{Streams, Bootable, Resource}
+import hlouw.akka.http.sandbox.core._
 
-object Main extends App with Bootable with Resource with Streams {
+object Main extends App
+  with Connections
+  with Services
+  with Resources
+  with Streams
+  with Core {
 
   override implicit val system = ActorSystem()
   override implicit val executor = system.dispatcher

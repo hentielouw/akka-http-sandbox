@@ -24,10 +24,7 @@ class RabbitResource(service: RabbitService)
         }
       } ~
       (get & pathEnd) {
-        complete {
-          val result: Future[Seq[RabbitEvent]] = service.streamFromDB.runWith(Sink.seq)
-          result
-        }
+        complete(service.eventsFromDB)
       }
     }
   }
