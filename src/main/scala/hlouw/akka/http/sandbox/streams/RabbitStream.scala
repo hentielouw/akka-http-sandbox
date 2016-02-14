@@ -1,27 +1,27 @@
 package hlouw.akka.http.sandbox.streams
 
 import akka.actor.ActorSystem
-import akka.stream.ActorMaterializer
 import akka.stream.scaladsl.{Flow, Source}
+import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
 import hlouw.akka.http.sandbox.entities.RabbitEvent
-import io.scalac.amqp.Connection
+import io.scalac.amqp.{Connection, Queue}
 import org.mongodb.scala._
 
 import scala.concurrent.{ExecutionContextExecutor, Future}
 
-/**
-  * Created by hlouw on 11/02/2016.
-  */
+
 class RabbitStream(amqpConnection: Connection, database: MongoDatabase)
                   (implicit system: ActorSystem, mat: ActorMaterializer, executor: ExecutionContextExecutor) {
 
+  import hlouw.akka.http.sandbox.conversions.ConversionFlows._
   import hlouw.akka.http.sandbox.entities.RabbitProtocol._
-  import hlouw.akka.http.sandbox.conversion.ConversionFlows._
+
+  private val queueDef = Queue("myqueue", durable = true)
 
   private val boundQueue = for {
-    queue <- amqpConnection.queueDeclare()
-    bind <- amqpConnection.queueBind(queue = queue.name, exchange = "sandbox", routingKey = "rabbit.#")
-  } yield queue
+    _ <- amqpConnection.queueDeclare(queueDef)
+    bind <- amqpConnection.queueBind(queue = queueDef.name, exchange = "sandbox", routingKey = "rabbit.#")
+  } yield queueDef
 
   private val eventsCollection = database.getCollection("events")
 
@@ -39,7 +39,11 @@ class RabbitStream(amqpConnection: Connection, database: MongoDatabase)
       publisher = amqpConnection.consume(queue.name)
       source = Source.fromPublisher(publisher)
     } yield {
-      source.via(deliveryTo[RabbitEvent]).via(toMongoDoc[RabbitEvent]).via(persistInDB)
+      source
+        .via(deliveryTo[RabbitEvent])
+        .via(toMongoDocFrom[RabbitEvent])
+        .via(persistInDB)
+        .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
     }
   }
 

@@ -1,8 +1,9 @@
 package hlouw.akka.http.sandbox.services
 
 import akka.actor.ActorSystem
-import akka.stream.{Supervision, ActorAttributes, ActorMaterializer}
 import akka.stream.scaladsl.{Flow, Sink, Source}
+import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
+import hlouw.akka.http.sandbox.conversions.MongoImplicits
 import hlouw.akka.http.sandbox.entities.RabbitEvent
 import io.scalac.amqp.{Connection, Message}
 import org.mongodb.scala.{Document, MongoDatabase}
@@ -32,7 +33,7 @@ class RabbitService(amqpConnection: Connection, database: MongoDatabase)
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
   }
 
-  def eventsFromDB: Future[Seq[RabbitEvent]] = streamFromDB.runWith(Sink.seq)
+  def eventsFromDB = streamFromDB.runWith(Sink.seq)
 
   def postToQueue(event: RabbitEvent)(implicit ec: ExecutionContext): Future[Unit] = {
     val source = Source.single(event)

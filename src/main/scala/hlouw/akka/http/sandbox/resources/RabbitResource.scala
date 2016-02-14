@@ -18,8 +18,8 @@ class RabbitResource(service: RabbitService)
 
   val routes = pathPrefix("rabbit") {
     pathPrefix("events") {
-      (post & pathEnd) {
-        onSuccess(service.postToQueue(RabbitEvent("rabbit1", "All rabbits welcome"))) {
+      (post & path(Segment)) { name: String =>
+        onSuccess(service.postToQueue(RabbitEvent(name, s"Message for $name"))) {
           complete(StatusCodes.NoContent)
         }
       } ~
