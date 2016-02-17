@@ -6,7 +6,7 @@ import org.mongodb.scala.MongoClient
 /**
   * Created by hlouw on 13/02/2016.
   */
-trait Connections {
+trait ConnectionProvider {
 
   val amqpConnection = Connection()
   val mongoClient: MongoClient = MongoClient("mongodb://192.168.99.100")

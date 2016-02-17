@@ -7,10 +7,10 @@ import com.typesafe.config.ConfigFactory
 import hlouw.akka.http.sandbox.core._
 
 object Main extends App
-  with Connections
-  with Services
-  with Resources
-  with Streams
+  with ConnectionProvider
+  with ServiceProvider
+  with ResourceProvider
+  with StreamProvider
   with Core {
 
   override implicit val system = ActorSystem()

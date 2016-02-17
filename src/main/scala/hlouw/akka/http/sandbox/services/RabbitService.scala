@@ -10,6 +10,7 @@ import io.scalac.amqp.{Connection, Message}
 import org.mongodb.scala.{Document, MongoDatabase}
 import spray.json._
 
+import scala.collection.immutable.Seq
 import scala.concurrent.{ExecutionContext, Future}
 
 
@@ -34,7 +35,7 @@ class RabbitService(amqpConnection: Connection, database: MongoDatabase)
       .withAttributes(ActorAttributes.supervisionStrategy(Supervision.resumingDecider))
   }
 
-  def eventsFromDB = streamFromDB.runWith(Sink.seq)
+  def eventsFromDB: Future[Seq[RabbitEvent]] = streamFromDB.runWith(Sink.seq)
 
   def postToQueue(event: RabbitEvent)(implicit ec: ExecutionContext): Future[Unit] = {
     val source = Source.single(event)

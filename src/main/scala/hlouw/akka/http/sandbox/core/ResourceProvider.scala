@@ -3,8 +3,8 @@ package hlouw.akka.http.sandbox.core
 import akka.http.scaladsl.server.Directives._
 import hlouw.akka.http.sandbox.resources.RabbitResource
 
-trait Resources {
-  this: Services with Core =>
+trait ResourceProvider {
+  this: ServiceProvider with Core =>
 
   lazy val rabbitResource = new RabbitResource(rabbitService)
 

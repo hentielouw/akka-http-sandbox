@@ -6,8 +6,8 @@ import hlouw.akka.http.sandbox.streams.RabbitStream
 /**
   * Created by hlouw on 11/02/2016.
   */
-trait Streams {
-  this: Connections with Core =>
+trait StreamProvider {
+  this: ConnectionProvider with Core =>
 
   lazy val rabbitStream = new RabbitStream(amqpConnection, database)
 

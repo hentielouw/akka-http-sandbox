@@ -4,11 +4,10 @@ import akka.actor.ActorSystem
 import akka.http.scaladsl.model.StatusCodes
 import akka.http.scaladsl.server.Directives._
 import akka.stream.Materializer
-import akka.stream.scaladsl.Sink
 import hlouw.akka.http.sandbox.entities.RabbitEvent
 import hlouw.akka.http.sandbox.services.RabbitService
 
-import scala.concurrent.{Future, ExecutionContextExecutor}
+import scala.concurrent.ExecutionContextExecutor
 
 
 class RabbitResource(service: RabbitService)
@@ -16,7 +15,7 @@ class RabbitResource(service: RabbitService)
 
   import hlouw.akka.http.sandbox.entities.RabbitProtocol._
 
-  val routes = pathPrefix("rabbit") {
+  lazy val routes = pathPrefix("rabbit") {
     pathPrefix("events") {
       (post & path(Segment)) { name: String =>
         onSuccess(service.postToQueue(RabbitEvent(name, s"Message for $name"))) {
@@ -28,5 +27,4 @@ class RabbitResource(service: RabbitService)
       }
     }
   }
-
 }
