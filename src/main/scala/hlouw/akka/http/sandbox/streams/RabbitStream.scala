@@ -1,5 +1,6 @@
 package hlouw.akka.http.sandbox.streams
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
@@ -25,7 +26,7 @@ class RabbitStream(amqpConnection: Connection, database: MongoDatabase)
 
   private val eventsCollection = database.getCollection("events")
 
-  val streamToDB: Future[Source[String, Unit]] = {
+  val streamToDB: Future[Source[String, NotUsed]] = {
     val persistInDB = Flow[Document].mapAsync[String](4) { doc =>
       eventsCollection.insertOne(doc).head() map { _ =>
         "Success"

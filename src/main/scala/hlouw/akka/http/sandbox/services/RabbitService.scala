@@ -1,5 +1,6 @@
 package hlouw.akka.http.sandbox.services
 
+import akka.NotUsed
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.{Flow, Sink, Source}
 import akka.stream.{ActorAttributes, ActorMaterializer, Supervision}
@@ -22,8 +23,8 @@ class RabbitService(amqpConnection: Connection, database: MongoDatabase)
   private val unmarshalToEvent = Flow[JsValue].map[RabbitEvent](_.convertTo[RabbitEvent])
   private val eventsCollection = database.getCollection("events")
 
-  val streamFromDB: Source[RabbitEvent, Unit] = {
-    val dbEventSource: Source[Document, Unit] = Source
+  val streamFromDB: Source[RabbitEvent, NotUsed] = {
+    val dbEventSource: Source[Document, NotUsed] = Source
       .fromPublisher(eventsCollection.find().collect())
       .mapConcat(_.toList)
 
